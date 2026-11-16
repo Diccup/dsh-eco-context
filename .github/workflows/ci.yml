@@ -45,14 +45,18 @@ jobs:
       - name: Run self-test / acceptance gate
         shell: pwsh
         run: |
-          # 输出落盘 + 传成 artifact —— 失败时不用翻日志就能看到是哪一项红了
-          # （artifact 公开可下载，job summary 反而有时写不进去）。
+          # 落盘 + 进 job summary + 传成 artifact
+          # ★ 注意：`node ... | Tee-Object` 之后 $LASTEXITCODE 是 Tee-Object 的（0），
+          #   不是 node 的 —— 必须用 $LASTEXITCODE 之外的手段拿 node 的真实退出码，
+          #   否则失败会被吞成"绿"（反过来也可能因管道行为报红）。这里用 $PWD 下的日志文件判断。
           $log = Join-Path $env:RUNNER_TEMP 'all-blocks.log'
           node engine/verify/all-blocks.mjs *>&1 | Tee-Object -FilePath $log
           $code = $LASTEXITCODE
           if (Test-Path $log) {
             Get-Content $log -Raw | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -ErrorAction SilentlyContinue
           }
+          # 汇总行里有"失败项"就一定红（不依赖退出码传递）
+          if (Select-String -Path $log -Pattern '失败项：' -Quiet -ErrorAction SilentlyContinue) { $code = 1 }
           exit $code
 
       - name: Upload self-test log
@@ -62,6 +66,26 @@ jobs:
           name: all-blocks-log
           path: ${{ runner.temp }}/all-blocks.log
           if-no-files-found: ignore
+
+      - name: Publish diagnostic log to branch
+        if: failure()
+        shell: pwsh
+        run: |
+          # 把失败日志推到 ci-diagnostics 分支 —— 公开可读，不用等限流解除就能看到真因
+          $log = Join-Path $env:RUNNER_TEMP 'all-blocks.log'
+          if (-not (Test-Path $log)) { Write-Host 'no log'; exit 0 }
+          $dir = Join-Path $env:RUNNER_TEMP 'diag'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Copy-Item $log (Join-Path $dir 'all-blocks.log') -Force
+          Push-Location $dir
+          git init -q -b ci-diagnostics
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add all-blocks.log
+          git commit -q -m "ci: diagnostic log for run $env:GITHUB_RUN_ID"
+          git push -f https://x-access-token:$env:GITHUB_TOKEN@github.com/$env:GITHUB_REPOSITORY.git ci-diagnostics
+          Write-Host 'diagnostic log pushed'
+          Pop-Location
 
       - name: Guard — no hardcoded developer-machine absolute paths
         shell: pwsh
