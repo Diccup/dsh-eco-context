@@ -44,7 +44,7 @@ const TMP = path.join(PKG_ROOT, 'Temp', `op-probe-${Date.now()}`);
 fs.mkdirSync(TMP, { recursive: true });
 
 /**
- * ★ 2026-11-09 补（7111d1dc 独立核对 D 条）：**跑完必须自清临时目录**。
+ * ★ 2026-11-09 补（某次实测 独立核对 D 条）：**跑完必须自清临时目录**。
  *
  * 原来这个脚本每跑一次就在 `Temp/` 下留一个 `op-probe-<ts>/`（含 content.db + WAL），
  * 属于 README §四「临时目录条目数必须不变」的违约 —— 实现方自查时没发现，

@@ -194,7 +194,7 @@ console.log('\n【③ 文档面与平台层文案不许教 op:search】');
             if (fs.existsSync(f)) docs.push(f);
         }
     }
-    // ★★ 2026-11-09 补洞（7111d1dc 独立核对 A 条）：**平台层 .js 也是"文案面"**。
+    // ★★ 2026-11-09 补洞（某次实测 独立核对 A 条）：**平台层 .js 也是"文案面"**。
     //   原判据只扫 descriptions/*.md 与 skills/*/SKILL.md，漏了 `platform/catalog.js` ——
     //   而它的 `deployNote()` 返回值会被 `skill-set.js` 注入 `ctx` 技能**正文**（有工具被禁时）：
     //     · catalog.js:60 硬编码 op 名单含 `search`、漏 `switch`
@@ -207,7 +207,7 @@ console.log('\n【③ 文档面与平台层文案不许教 op:search】');
         ? fs.readdirSync(platformDir).filter((f) => f.endsWith('.js')).map((f) => path.join(platformDir, f))
         : [];
 
-    // ★★ 2026-11-09 第二次修（0d2c6aae 驳回 A-2）：**从引擎真源取 op 清单**，供"直接对拍"用。
+    // ★★ 2026-11-09 第二次修（某次实测 驳回 A-2）：**从引擎真源取 op 清单**，供"直接对拍"用。
     //   取法用**运行时真 import**（与核对方一致），不是正则读源码 ——
     //   读源码数 op 会被注释/多行写法骗，import 拿到的就是引擎真正注册的那份。
     //   取不到就 fail-fast（判据无法成立时**不许静默跳过**，这条纪律本门已在别处立过）。
@@ -250,9 +250,9 @@ console.log('\n【③ 文档面与平台层文案不许教 op:search】');
     }
     for (const f of platformJs) {
         const raw = fs.readFileSync(f, 'utf8');
-        // ★★ 2026-11-09 第二次修（0d2c6aae 驳回 A-2 条，真 bug）：
+        // ★★ 2026-11-09 第二次修（某次实测 驳回 A-2 条，真 bug）：
         //   **上一版判据只认"单个长字符串里含 op 名单"，抓不住数组逐元素写法。**
-        //   驳回实证（0d2c6aae 三次注入）：
+        //   驳回实证（某次实测 三次注入）：
         //     ① KNOWN_OPS 改回**跨行数组**（真实形态，含 search 漏 switch）→ 上一版 **EXIT=0**（漏）
         //     ② 改回**单行数组**（含 search）                        → 上一版 **EXIT=0**（漏）
         //     ③ 注入**单个长字符串** 'run / search / recall / …'      → 上一版 **EXIT=1**（只抓到这条）

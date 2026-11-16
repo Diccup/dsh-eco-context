@@ -460,12 +460,12 @@ try {
         // b. ours/ 不许反向 import 引擎（依赖只准往下：引擎不认识桥，桥递能力进 deps）
         // ★ N8 批次 1 · D4（票面 11 v0.5-v0.6）：守门从"ours 顶层 .js"扩到**递归含
         //   engines/ + engines-offline/**，并加两条卡专属门（禁 TLA / 活卡禁 import offline）。
-        //   背景实测（d5ec0191）：原写法 readdirSync 只扫顶层 ⇒ 17 张卡完全不受 BACK 守门。
+        //   背景实测（某次实测）：原写法 readdirSync 只扫顶层 ⇒ 17 张卡完全不受 BACK 守门。
         //   递归**不许沿用参考实现上面 platform 段的顶层 readdirSync**，必须目录遍历（连带钉 c 条）。
         //   跑侧（修法 A）：三门只在**成品侧**跑（argDir=releases/1.0.0）；开发区侧 --dir
         //   两种指法均禁入——overlay 缺 engine/index.mjs 被 L78 前置校验拒，repo 根过 L78
         //   但无 ours/ 会静默跳段 = 假绿。等价覆盖由 assemble-release 的 D1 门断言
-        //   （两处 ours 逐件哈希全等）保证，故 D1 门必须先于本门跑（de8c5112 执行顺序钉）。
+        //   （两处 ours 逐件哈希全等）保证，故 D1 门必须先于本门跑（某次实测 执行顺序钉）。
         const oursDir = path.join(argDir, 'ours');
         if (!fs.existsSync(oursDir))
             throw new Error(`ours/ 不存在（${oursDir}）—— 守门不许静默跳过（v0.5 连带钉 b）`);
@@ -485,13 +485,13 @@ try {
                 if (BACK.test(src)) throw new Error(`ours/${rel} 反向 import 了引擎 —— 分层倒了（能力经 deps 注入，不 import）`);
             }
         }
-        // 卡专属门②：禁 TLA。**判据 = Node 自己的权威判定（S5 复核 d5ec0191 定夺方案 i）**：
+        // 卡专属门②：禁 TLA。**判据 = Node 自己的权威判定（S5 复核 某次实测 定夺方案 i）**：
         //   对每张卡 createRequire(成品包根/anchor.js) 后 require(卡绝对路径)——
         //   含 TLA 的 ESM 图 require 必抛 ERR_REQUIRE_ASYNC_MODULE，无 TLA require OK。
         //   为什么权威：TLA 的定义就是"让模块图变 async"，Node 判 async graph 的唯一
         //   信号即此错误码 ⇒ 零启发式、零残留洞。演进记档：行首正则（漏 const/export const
-        //   x=await 两型，d5ec0191 CON）→ 花括号深度 0（I 对象属性/K 裸块/L if 块/M for 块
-        //   四型真 TLA 仍豁免，de8c5112 挂起判别实测）→ 本判据（14 例 + 24 真卡实测全过）。
+        //   x=await 两型，某次实测 CON）→ 花括号深度 0（I 对象属性/K 裸块/L if 块/M for 块
+        //   四型真 TLA 仍豁免，某次实测 挂起判别实测）→ 本判据（14 例 + 24 真卡实测全过）。
         //   前提（均实测）：① 成品包根 package.json type=module（否则报 ERR_REQUIRE_ESM
         //   ⇒ 判据失效，下面单列报错）；② 同进程先 import 过整链再 require 单卡仍能检出
         //   ⇒ 与本门早前 import 无顺序冲突；③ 卡顶层零副作用（只 export default）。

@@ -38,7 +38,7 @@ export const DEFAULT_DISABLED_TOOLS = [];
  *   memory / stats / doctor / maint / purge / switch / list）从它的 `op` 参数分派，
  *   **它们不是独立工具位**，不要加回这个数组（加了会让 deployNote 算出不存在的工具）。
  *
- * ★★ 2026-11-09 ④步 CTX 净身（7111d1dc 独立核对抓出的实质残留，A 条）：
+ * ★★ 2026-11-09 ④步 CTX 净身（某次实测 独立核对抓出的实质残留，A 条）：
  *   原文这里是「13 个 op（run / **search** / recall / … / purge / list）」——
  *   **数目写 13、名单却有 14 个（含已迁走的 search、漏了 switch）**，自相矛盾。
  *   op:search 已随 FP 迁出，本条注释与下面 deployNote 的硬编码名单**必须与
@@ -49,10 +49,10 @@ export const FULL_CATALOG = [
 ];
 
 /**
- * op 清单的**平台侧视图**（★ 2026-11-09 净身新增，修 7111d1dc 抓出的 A 条）。
+ * op 清单的**平台侧视图**（★ 2026-11-09 净身新增，修 某次实测 抓出的 A 条）。
  *
  * 为什么要有它：`deployNote()` 原来把 op 名单**硬编码在字符串里**，那是第二份真源 ——
- * op:search 迁走时**没人会想起来改它**（本轮就漏了，实测 7111d1dc 抓出）。
+ * op:search 迁走时**没人会想起来改它**（本轮就漏了，实测 某次实测 抓出）。
  * 教训同 `assemble-release` 的"维护一份本来可以算出来的清单 = 事故根源"。
  *
  * 为什么不直接 import `engine/index.mjs` 的 `OP_CATALOG`：
@@ -86,7 +86,7 @@ export const EXCLUSIVE_CONTEXT_TOOLS = new Set(['ctx']);
  * 无禁用 → 空串（零注入）。
  * ★ 2026-11-04 原名 modeNote（模式退役后改叫部署注记，逻辑不变）。
  *
- * ★★ 2026-11-09 ④步 CTX 净身（7111d1dc 核对 A 条）：原实现在 :60 把 op 名单**硬编码**
+ * ★★ 2026-11-09 ④步 CTX 净身（某次实测 核对 A 条）：原实现在 :60 把 op 名单**硬编码**
  *   在字符串里（`run / search / recall / … / purge / list`）—— 那是第二份真源，
  *   op:search 迁走时没人想起来改它 ⇒ **有工具被禁时，这段会把 op:search 教给模型**
  *   （一个已经不存在的 op）。现改为**形参 ops 传入 / 兜底用 KNOWN_OPS**，只此一份名单。

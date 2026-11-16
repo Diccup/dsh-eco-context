@@ -39,7 +39,7 @@ export const TOKENIZERS = Object.freeze({ porter: 'porter unicode61', trigram: '
  * 列序逐位断言 —— **直接转调契约件 libs/sql.js 的 assertColumnOrder()**（不另写一份）。
  *
  * 2026-11-03 实现方抓到 libs 那版对数组取了 Object.keys（得到 '0','1'…），对正确的表
- * 也必 throw；已由 5903f0d2 修正并补了 libs/sql.selftest.mjs 的回归断言，队长拍板走 A。
+ * 也必 throw；已由某次实测 修正并补了 libs/sql.selftest.mjs 的回归断言，队长拍板走 A。
  * 这里保留一个同名转调口（`verifyColumnOrder`）只为让本块的调用点语义清楚、
  * 返回列名的来源仍是唯一事实源 sql.js；列序契约本体绝不在块内复写。
  *
