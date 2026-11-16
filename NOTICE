@@ -1,0 +1,36 @@
+AI-GENERATED NOTICE / AI 生成声明
+---------------------------
+This project was generated with AI assistance (AI-generated / AI-assisted).
+
+DISCLAIMER
+----------
+This project makes NO warranty of any kind, whether express or implied,
+regarding correctness, stability, merchantability, or fitness for a
+particular purpose.
+
+The authors and maintainers shall not be liable for any direct or indirect
+loss arising from the use of this plugin. Please assess the risks yourself
+and comply with the laws and service agreements applicable in your region.
+
+Full statement: DISCLAIMER.md in the repository root.
+
+dsh-eco-context
+Copyright 2026 dsh-eco-context contributors
+
+Source: https://github.com/Diccup/dsh-eco-context
+
+This product is licensed under the MIT License (see LICENSE).
+
+Third-party notices
+-------------------
+vendor/context-mode/
+  Contains the LICENSE text and package.json of the upstream project
+  52sujiu/context-mode (https://github.com/52sujiu/dsh-context-mode),
+  distributed under the Elastic License 2.0 (ELv2).
+  NO upstream engine code ships in this package.
+  The upstream notice is preserved verbatim for attribution and traceability.
+  See LICENSING.md for the full split.
+
+deps/pylibs/
+  Isolated Python dependencies (certifi, cffi, curl_cffi, pycparser) and their
+  own license files, shipped under their respective upstream licenses.

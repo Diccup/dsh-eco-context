@@ -1,0 +1,46 @@
+{
+  "name": "dsh-eco-context",
+  "version": "1.0.0",
+  "assembledAt": "2026-11-15T06:29:06.852Z",
+  "assembledFrom": {
+    "engine": "Work/dsh-eco-context/engine",
+    "platform": "Work/dsh-eco-context/overlay/platform",
+    "ours": "Work/dsh-eco-context/overlay/ours",
+    "carried": "vendor,docs"
+  },
+  "counts": {
+    "docs": {
+      "files": 7,
+      "bytes": 242527
+    },
+    "engine": {
+      "files": 90,
+      "bytes": 1388594
+    },
+    "ours": {
+      "files": 6,
+      "bytes": 131628
+    },
+    "platform": {
+      "files": 13,
+      "bytes": 137943
+    },
+    "skills": {
+      "files": 6,
+      "bytes": 19633
+    },
+    "vendor": {
+      "files": 2,
+      "bytes": 9335
+    }
+  },
+  "total": {
+    "files": 124,
+    "bytes": 1929660
+  },
+  "notes": [
+    "engine/ 不含 ref/（基线副本，不进成品）",
+    "1.0.0 完全独立：不再向 1.2.2 借壳，vendor/docs 由成品自身承继（deps/fp 已于 2026-11-09 净身摘净）",
+    "工具面：只有 1 位 ctx（13 op 壳；2026-11-05 新增 op=switch 工具开关；2026-11-09 op=search 迁 FP）"
+  ]
+}

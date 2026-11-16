@@ -1,0 +1,7 @@
+{
+  "name": "dsh-eco-context-engine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "S9 新引擎：17 块积木。零构建，node 直跑。"
+}

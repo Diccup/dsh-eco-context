@@ -1,0 +1,9 @@
+# dsh-eco-context bundle patch.
+# The row-level inject guarantees the two optional DSH services are mounted
+# before the adapter discovers and registers context-mode tools.
+- insert:
+    - id: dsh-eco-context
+      name: 'dsh-eco-context'
+      inject: [tools, systemPrompt]
+      config:
+        enabled: true
