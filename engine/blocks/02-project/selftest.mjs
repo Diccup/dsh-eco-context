@@ -196,11 +196,13 @@ try {
             //   （`C:\Users\runneradmin\...`）指向同一个目录，GitHub Actions runner 上
             //   实测就是这样。字符串全等把"环境形态差异"当成了契约失败。
             //   真正的契约是：junction 解析到的目录 = 根外那个夹具目录。
-            //   验法：把两边都归一（转小写 + 反斜杠换正斜杠）后比较。
+            //   验法：**两边都用同一个 realpath 实现**（.native）归一后再比 ——
+            //   同一个实现对同一个目录给出同一个形态，形态差异就消失了。
+            const nativeOf = (p) => (realpathSync.native ?? realpathSync)(p);
             const normPath = (s) => String(s).replace(/\\/g, '/').toLowerCase();
             assert.equal(
-                normPath(native),
-                normPath(realpathSync(outside)),
+                normPath(nativeOf(jn)),
+                normPath(nativeOf(outside)),
                 'junction 应解析到根外夹具目录',
             );
             // 关键断言：目标文件真实存在于根外，围栏必须拦下
