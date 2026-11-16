@@ -186,14 +186,17 @@ try {
         const labels = e.db.prepare("SELECT label FROM sources WHERE label LIKE 'docs:%'").all().map((x) => x.label);
         assert.ok(labels.length >= 2, JSON.stringify(labels));
         // ★ 只判"不该有的绝对路径"：**临时目录本身**的绝对路径是允许的
-        //   （label 形如 docs:<dir>\a.md，dir 在临时目录下）。
+        //   （label 形如 docs:<临时目录>\a.md）。
         //   判据真正要抓的是"label 里混进了绝对路径"——那会让 label 不可移植。
-        //   所以：去掉临时目录前缀后，不许再出现盘符路径。
-        const tmpRoot = path.resolve(dir);
+        //   所以：把临时目录前缀去掉后，不许再出现盘符路径。
+        //   ★ Windows 上大小写与分隔符不保证一致（Temp vs temp、\ vs /），
+        //     所以比较前先归一：转小写 + 反斜杠统一成正斜杠。
+        const norm = (s) => String(s).replace(/\\/g, '/').toLowerCase();
+        const tmpRoot = norm(path.resolve(dir));
         for (const l of labels) {
-            const withoutTmp = l.split(tmpRoot).join('');
-            assert.ok(!/[A-Za-z]:\\/.test(withoutTmp),
-                `label 里出现了绝对路径（临时目录之外）：${l}`);
+            const withoutTmp = norm(l).split(tmpRoot).join('');
+            assert.ok(!/[a-z]:\//.test(withoutTmp),
+                `label 里出现了绝对路径（临时目录之外）：${l}｜dir=${dir}｜tmpRoot=${tmpRoot}｜withoutTmp=${withoutTmp}`);
         }
         e.close();
     });

@@ -379,7 +379,12 @@ export function createWriter(deps) {
     /** 相对根目录的 posix 路径（跨盘/不同分隔符都退回 null，由调用方处理）。 */
     function projectRelative(root, file) {
         try {
-            const rel = pathRelative(root, file);
+            // ★ Windows 上大小写不敏感：root 可能是 `C:\Users\RUNNERADMIN\...`（环境变量形态），
+            //   而 file 来自 walkDirectoryDetailed 的 realpath（`C:\Users\runneradmin\...`）。
+            //   直接 pathRelative 会算出 `..\..\..` → 退回绝对路径 → label 不可移植。
+            //   办法：比较前把两边都归一（转小写 + 反斜杠换正斜杠），算完再还原。
+            const norm = (s) => String(s).replace(/\\/g, '/').toLowerCase();
+            const rel = pathRelative(norm(root), norm(file));
             if (!rel || rel.startsWith('..')) return null;
             return rel.split(sep).join('/');
         }

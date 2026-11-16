@@ -114,8 +114,14 @@ try {
         }
         try {
             // 链接在根内、目标在根外：词法闸放行，realpath 闸必须拦下
-            assert.throws(() => isInside(tmp, 'escape-link'), (e) => e.code === 'DENIED_PATH' && /围栏外/.test(e.message));
-            assert.throws(() => isInside(tmp, 'escape-dir'), (e) => e.code === 'DENIED_PATH' && /围栏外/.test(e.message));
+            // ★ 判"是不是围栏外"要看 e.details.why（"围栏外"三个字在 why 里，
+            //   不在 e.message 里 —— e.message 第一行是通用 fix 文案）。
+            //   本机没权限建 symlink 时这条会 skip，所以本地跑不到；CI runner 有权限，
+            //   会真跑到 —— 判据写不对就在别人机器上才暴露。
+            const isFenceEscaped = (e) => e.code === 'DENIED_PATH'
+                && /围栏外/.test(String(e.message ?? '') + String(e.details?.why ?? ''));
+            assert.throws(() => isInside(tmp, 'escape-link'), isFenceEscaped);
+            assert.throws(() => isInside(tmp, 'escape-dir'), isFenceEscaped);
             // 指向根内的链接必须放行（别把正常软链也杀了）
             const innerLink = join(tmp, 'inner-link');
             symlinkSync(join(tmp, 'ok.txt'), innerLink, 'file');
