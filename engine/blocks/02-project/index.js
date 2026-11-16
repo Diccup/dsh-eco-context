@@ -23,7 +23,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readdirSync, statSync, lstatSync, realpathSync, existsSync, readFileSync } from 'node:fs';
+import { readdirSync, statSync, lstatSync, realpathSync, existsSync, readFileSync, readlinkSync } from 'node:fs';
 import { join, resolve, dirname, sep, relative, isAbsolute, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { err } from '../../libs/err.js';
@@ -155,8 +155,42 @@ export function isInside(root, target) {
                 // 连祖先都 realpath 不了（权限等）→ 词法判定作数（best-effort）
             }
         }
+        // ★ 断链专案：lex **本身**就是一个符号链接（existsSync 为真、realpath 却失败）。
+        //   这种链的目标可能根本不存在 ⇒ 上面的"最近存在的祖先"就是它自己 ⇒ 又失败 ⇒ 被吞。
+        //   这里直接读链接目标，自己判断它是否落在围栏外：
+        //     · 目标是相对路径 → 相对链接所在目录解析
+        //     · 目标是绝对路径 → 直接判
+        const linkTarget = readLinkTarget(lex);
+        if (linkTarget !== null) {
+            const resolved = isAbsolute(linkTarget)
+                ? resolve(linkTarget)
+                : resolve(dirname(lex), linkTarget);
+            if (!withinLexical(r, resolved)) {
+                throw err('DENIED_PATH', {
+                    root: r, target: resolved, stage: 'realpath',
+                    why: '符号链接/junction 指向围栏外（断链，按链接目标判定）',
+                });
+            }
+        }
     }
     return true;
+}
+
+/**
+ * 读路径上的符号链接目标（是符号链接才返回，否则 null）。
+ * 读不出来（不是链接 / 权限）返回 null。
+ *
+ * @param {string} p
+ * @returns {string|null}
+ */
+function readLinkTarget(p) {
+    try {
+        if (!lstatSync(p).isSymbolicLink()) return null;
+        return readlinkSync(p);
+    }
+    catch {
+        return null;
+    }
 }
 
 /**
