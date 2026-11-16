@@ -45,7 +45,17 @@ jobs:
       - name: Run self-test / acceptance gate
         shell: pwsh
         run: |
-          node engine/verify/all-blocks.mjs
+          # 输出同时写进 job summary —— 失败时不用翻日志就能看到是哪一项红了。
+          $log = 'all-blocks.log'
+          node engine/verify/all-blocks.mjs 2>&1 | Tee-Object -FilePath $log
+          $code = $LASTEXITCODE
+          if (Test-Path $env:GITHUB_STEP_SUMMARY) {
+            "## 自测输出" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+            "```" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            Get-Content $log | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "```" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          exit $code
 
       - name: Guard — no hardcoded developer-machine absolute paths
         shell: pwsh
