@@ -346,16 +346,24 @@ await real('shell 真跑（显式 SHELL=pwsh.exe）', async () => {
     });
 });
 
-// ★ R13（2026-11-05）：本机 perl 是 **hermes 的 MINGW 版**，受限令牌下拉起来必崩
-//   （实测 `couldn't create signal pipe, Win32 error 5`）。探测层已按 isMsysRuntime 拒掉它，
-//   所以这条从"perl 真跑"改成"**假阳性不再发生**"——断言的重点是
-//   **availableLanguages 报 ok 的语言，必须真的能起**，而不是"perl 必须能用"。
-//   （原来这条断言 perl 能跑，等于把"本机恰好有可用 perl"当成了契约；本机根本没有，
-//     旧断言能过是因为探测漏判 —— 正是维护方问的那类假阳性。）
-await t('假阳性防线：探测报 ok 的语言必须真能起（perl 的 MINGW 版必须被判掉）', async () => {
+// ★ R13（2026-11-05）：开发机上的 perl 是 **hermes 的 MINGW 版**，受限令牌下拉起来必崩
+//   （实测 `couldn't create signal pipe, Win32 error 5`）。探测层已按 isMsysRuntime
+//   拒掉它，所以这条从"perl 真跑"改成"**假阳性不再发生**"——断言的重点是
+//   **availableLanguages 报 ok 的语言，必须真的能起**，而不是"perl 必须不能用"。
+//
+// ★ 2026-11-16 发布版修正：原判据写死了「本机 perl 是 MSYS 版，探测必须报 ok:false」——
+//   那是**开发机的事实**，不是契约。别人机器上 perl 可能根本不存在（ok=false，正常），
+//   也可能是 Strawberry 版等正经 perl（ok=true，也正常）。
+//   契约只有一条：**探测报 ok 的语言必须真能起**。perl 自己是不是 MSYS 版由探测层管，
+//   这条判据不该重复管一遍。
+await t('假阳性防线：探测报 ok 的语言必须真能起', async () => {
     const langs = availableLanguages();
+    // perl 若被探测为 ok，必须**不是**被拒掉的 MSYS/MINGW 版（那才是假阳性）
     const perl = langs.find((l) => l.language === 'perl');
-    assert.equal(perl.ok, false, `本机 perl 是 MSYS 版，受限令牌下起不来，探测必须报 ok:false；实际 ok=${perl.ok} path=${perl.path}`);
+    if (perl?.ok === true) {
+        assert.ok(!/msys|mingw/i.test(String(perl.path ?? '')),
+            `perl 报 ok 但路径是 MSYS/MINGW 版（受限令牌下起不来）—— 假阳性：${perl.path}`);
+    }
     // 反向：探测报 ok 的每一个，都要能在白名单里被放行（两张皮不许再出现）
     const okLangs = langs.filter((l) => l.ok).map((l) => l.language);
     assert.ok(okLangs.length > 0, '至少 javascript 必须 ok');

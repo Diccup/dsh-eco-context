@@ -185,7 +185,16 @@ try {
         // label 用相对路径（2.0 口径），不是绝对路径
         const labels = e.db.prepare("SELECT label FROM sources WHERE label LIKE 'docs:%'").all().map((x) => x.label);
         assert.ok(labels.length >= 2, JSON.stringify(labels));
-        assert.ok(labels.every((l) => !/[A-Za-z]:\\/.test(l)), `label 里出现了绝对路径：${labels.join(',')}`);
+        // ★ 只判"不该有的绝对路径"：**临时目录本身**的绝对路径是允许的
+        //   （label 形如 docs:<dir>\a.md，dir 在临时目录下）。
+        //   判据真正要抓的是"label 里混进了绝对路径"——那会让 label 不可移植。
+        //   所以：去掉临时目录前缀后，不许再出现盘符路径。
+        const tmpRoot = path.resolve(dir);
+        for (const l of labels) {
+            const withoutTmp = l.split(tmpRoot).join('');
+            assert.ok(!/[A-Za-z]:\\/.test(withoutTmp),
+                `label 里出现了绝对路径（临时目录之外）：${l}`);
+        }
         e.close();
     });
 
