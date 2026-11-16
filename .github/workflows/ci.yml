@@ -24,13 +24,16 @@ jobs:
           node-version: '22'
 
       # ★ platform/plugin.js import '@deepseek-ai/schemastery'，不装依赖 → 16-entry 块必红。
-      #   只装**运行时真正要的那几个**，不跑整份 package.json：
-      #   devDependencies 里的 @deepseek-ai/dsh-* 都是 rc 预发布版，registry 上未必有可装版本，
-      #   整份 npm install 会卡在这里。CI 只需要平台层那几个纯 JS 依赖。
+      #   只装**运行时真正要的那几个**：
+      #   · devDependencies 里的 @deepseek-ai/dsh-* 都是 rc 预发布版，整份装会失败
+      #   · --legacy-peer-deps：package.json 里那批 rc 版 peerDependencies 解析不过，
+      #     npm 默认严格模式会直接 ERESOLVE 报错 —— CI 不需要它们
+      #   · --no-save：不改 package.json，仓库保持干净
       - name: Install dependencies
         shell: pwsh
         run: |
-          npm install --no-audit --no-fund --ignore-scripts --no-save `
+          npm install --no-audit --no-fund --ignore-scripts --no-save --no-package-lock `
+            --legacy-peer-deps `
             "@deepseek-ai/schemastery@^3.18.1" "ajv@^8.20.0" "ajv-formats@^3.0.1" "zod@^4.6.7"
 
       - name: Syntax-check plugin entry
