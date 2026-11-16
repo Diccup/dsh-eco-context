@@ -45,17 +45,23 @@ jobs:
       - name: Run self-test / acceptance gate
         shell: pwsh
         run: |
-          # 输出同时写进 job summary —— 失败时不用翻日志就能看到是哪一项红了。
-          $log = 'all-blocks.log'
-          node engine/verify/all-blocks.mjs 2>&1 | Tee-Object -FilePath $log
+          # 输出落盘 + 传成 artifact —— 失败时不用翻日志就能看到是哪一项红了
+          # （artifact 公开可下载，job summary 反而有时写不进去）。
+          $log = Join-Path $env:RUNNER_TEMP 'all-blocks.log'
+          node engine/verify/all-blocks.mjs *>&1 | Tee-Object -FilePath $log
           $code = $LASTEXITCODE
-          if (Test-Path $env:GITHUB_STEP_SUMMARY) {
-            "## 自测输出" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8
-            "```" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-            Get-Content $log | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-            "```" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          if (Test-Path $log) {
+            Get-Content $log -Raw | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -ErrorAction SilentlyContinue
           }
           exit $code
+
+      - name: Upload self-test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-blocks-log
+          path: ${{ runner.temp }}/all-blocks.log
+          if-no-files-found: ignore
 
       - name: Guard — no hardcoded developer-machine absolute paths
         shell: pwsh
