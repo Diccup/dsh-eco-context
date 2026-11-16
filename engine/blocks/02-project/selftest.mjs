@@ -190,10 +190,23 @@ try {
             else {
                 console.log(`    （情报）本机 libuv realpath 已能解析 junction（${libuv}），.native 兜底仍保留`);
             }
-            assert.equal(native.toLowerCase(), realpathSync(outside).toLowerCase(), 'junction 应解析到根外夹具目录');
+            // ★ 判据改成**语义等價**而不是字符串全等（2026-11-16 发布版修）：
+            //   同一目录，libuv realpath 与 .native realpath 可能给出**不同字符串形态**
+            //   —— Windows 上 8.3 短路径（`C:\Users\RUNNER~1\...`）与长路径
+            //   （`C:\Users\runneradmin\...`）指向同一个目录，GitHub Actions runner 上
+            //   实测就是这样。字符串全等把"环境形态差异"当成了契约失败。
+            //   真正的契约是：junction 解析到的目录 = 根外那个夹具目录。
+            //   验法：把两边都归一（转小写 + 反斜杠换正斜杠）后比较。
+            const normPath = (s) => String(s).replace(/\\/g, '/').toLowerCase();
+            assert.equal(
+                normPath(native),
+                normPath(realpathSync(outside)),
+                'junction 应解析到根外夹具目录',
+            );
             // 关键断言：目标文件真实存在于根外，围栏必须拦下
             assert.equal(existsSync(join(outside, 'evil.txt')), true);
-            assert.throws(() => isInside(tmp, 'jn-escape'), (e) => e.code === 'DENIED_PATH' && /围栏外/.test(e.message));
+            assert.throws(() => isInside(tmp, 'jn-escape'), (e) => e.code === 'DENIED_PATH'
+                && /围栏外/.test(String(e.message ?? '') + String(e.details?.why ?? '')));
             assert.throws(() => isInside(tmp, join('jn-escape', 'evil.txt')), (e) => e.code === 'DENIED_PATH');
             // 遍历侧：junction 目录不得被收进结果
             const w = walkDirectoryDetailed(tmp, { extensions: ['.txt'] });
