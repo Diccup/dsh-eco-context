@@ -131,9 +131,53 @@ export function isInside(root, target) {
         }
     } catch (e) {
         if (e && e.code === 'DENIED_PATH') throw e; // 纵深闸的拒绝不许被 catch 吞掉
-        // ENOENT/EACCES 等：realpath 失败 → 词法判定作数（照 1.2.2 的 best-effort 语义）
+        // ENOENT/EACCES 等：realpath 失败 → 退到「最近的**存在的**祖先」再判一次。
+        //
+        // ★ 为什么必须多这一下（2026-11-16 发布版修的真实漏洞）：
+        //   围栏内放一个**断链**（指向围栏外、但目标还不存在的路径）时，
+        //   canonical(lex) 抛 ENOENT → 原先直接按词法判定作数（放行）。
+        //   但写操作会**跟着链接走** —— 目标一旦被创建，写入就落在围栏外。
+        //   所以：realpath 失败时，从目标往上找第一个真实存在的祖先，
+        //   把它 canonical 化后再跟围栏根比 —— 断链指向围栏外照样能看出来。
+        const nearest = nearestExistingAncestor(lex);
+        if (nearest !== null) {
+            try {
+                const canonicalRoot = canonical(r);
+                const canonicalAncestor = canonical(nearest);
+                if (!withinLexical(canonicalRoot, canonicalAncestor)) {
+                    throw err('DENIED_PATH', {
+                        root: canonicalRoot, target: nearest, stage: 'realpath',
+                        why: '符号链接/junction 指向围栏外（断链，按最近存在的祖先判定）',
+                    });
+                }
+            } catch (e2) {
+                if (e2 && e2.code === 'DENIED_PATH') throw e2;
+                // 连祖先都 realpath 不了（权限等）→ 词法判定作数（best-effort）
+            }
+        }
     }
     return true;
+}
+
+/**
+ * 从 `p` 往上找第一个**真实存在**的祖先目录（含自身）。
+ * 不存在（ENOENT）就往上一级走；走到根都没有就返回 null。
+ *
+ * @param {string} p
+ * @returns {string|null}
+ */
+function nearestExistingAncestor(p) {
+    let cur = p;
+    for (let i = 0; i < 64; i += 1) {
+        try {
+            if (existsSync(cur)) return cur;
+        }
+        catch { /* 继续往上一级 */ }
+        const up = dirname(cur);
+        if (up === cur) return null;
+        cur = up;
+    }
+    return null;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -484,12 +528,19 @@ export function walkDirectoryDetailed(rootPath, opts = {}) {
                 capped = true;
                 return;
             }
-            out.push(absChild);
+            // ★ 2026-11-16 发布版修：把**相对路径**一起带出去。
+            //   relPosix 是相对 rootReal（realpath 后的根）算的 —— 正确口径。
+            //   以前调用方（08-writer）拿 root 的**原值**再算一次相对路径，
+            //   而 Windows 上 TEMP 常是 8.3 短路径（`C:\Users\RUNNER~1\...`），
+            //   realpath 给出的是长路径（`C:\Users\runneradmin\...`）——
+            //   两者字符串不同 ⇒ 相对路径算不出来 ⇒ label 退成绝对路径 ⇒ 不可移植。
+            //   现在由遍历层直接给出相对路径，调用方不再重算。
+            out.push({ path: absChild, rel: relPosix });
         }
     }
 
     walk(rootReal, 0, respectGitignore ? readRules(rootReal, []) : [], []);
-    return { files: out, capped, totalSeen };
+    return { files: out.map((f) => f.path), fileEntries: out, capped, totalSeen };
 }
 
 /** 便捷面：只要文件清单。 */

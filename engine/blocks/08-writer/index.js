@@ -344,16 +344,28 @@ export function createWriter(deps) {
         const walked = project.walkDirectoryDetailed(root, walkOpts);
         let filesIndexed = 0; let totalChunks = 0; let denied = 0; let failed = 0; let skippedBinary = 0;
         const failures = [];
-        for (const file of walked.files) {
+        // ★ 2026-11-16 发布版修：相对路径**由遍历层给**（fileEntries[].rel），
+        //   不再自己重算 —— Windows 上 TEMP 常是 8.3 短路径（`C:\Users\RUNNER~1\...`），
+        //   而遍历层内部用的是 realpath 后的根（`C:\Users\runneradmin\...`），
+        //   调用方拿原值重算必然算不出来 → label 退成绝对路径 → 不可移植。
+        //   遍历层没有给 rel 时（老接口）才退回自己算。
+        const entries = walked.fileEntries ?? walked.files.map((f) => ({ path: f, rel: null }));
+        for (const entry of entries) {
+            const file = typeof entry === 'string' ? entry : entry.path;
             if (perFileDeny && perFileDeny(file)) { denied++; continue; }
             try {
                 // 相对路径（posix）当 label 后缀；拿不到相对路径就退回文件名
                 let rel = file;
-                try {
-                    const r = projectRelative(root, file);
-                    if (r) rel = r;
+                if (typeof entry === 'object' && entry.rel) {
+                    rel = entry.rel;
                 }
-                catch { /* 拿不到相对路径：退回原样 */ }
+                else {
+                    try {
+                        const r = projectRelative(root, file);
+                        if (r) rel = r;
+                    }
+                    catch { /* 拿不到相对路径：退回原样 */ }
+                }
                 const fileSource = source ? `${source}:${rel}` : rel;
                 const baseName = String(rel).split(/[/\\]/).pop() ?? rel;
                 const r = write({ path: file, source: fileSource, sessionId, category, attribution,
@@ -379,12 +391,18 @@ export function createWriter(deps) {
     /** 相对根目录的 posix 路径（跨盘/不同分隔符都退回 null，由调用方处理）。 */
     function projectRelative(root, file) {
         try {
-            // ★ Windows 上大小写不敏感：root 可能是 `C:\Users\RUNNERADMIN\...`（环境变量形态），
-            //   而 file 来自 walkDirectoryDetailed 的 realpath（`C:\Users\runneradmin\...`）。
-            //   直接 pathRelative 会算出 `..\..\..` → 退回绝对路径 → label 不可移植。
-            //   办法：比较前把两边都归一（转小写 + 反斜杠换正斜杠），算完再还原。
-            const norm = (s) => String(s).replace(/\\/g, '/').toLowerCase();
-            const rel = pathRelative(norm(root), norm(file));
+            // ★ 必须用 **realpath 后的 root** 来算相对路径，不能直接用调用方传的原值。
+            //   Windows 上 TEMP 常是 8.3 短路径（`C:\Users\RUNNER~1\AppData\Local\Temp`），
+            //   而 walkDirectoryDetailed 返回的 file 是 realpath 形态
+            //   （`C:\Users\runneradmin\AppData\Local\Temp\...`）——
+            //   两者字符串不同 ⇒ pathRelative 算出 `..\..\..` ⇒ 退回绝对路径 ⇒ label 不可移植。
+            //   实测（GitHub Actions runner）：label 变成 `docs:C:\Users\runneradmin\...\a.md`。
+            //   解法：两边都 realpath.native 归一后再算。
+            const realOf = (p) => {
+                try { return (fs.realpathSync.native ?? fs.realpathSync)(p); }
+                catch { return p; }
+            };
+            const rel = pathRelative(realOf(root), realOf(file));
             if (!rel || rel.startsWith('..')) return null;
             return rel.split(sep).join('/');
         }
