@@ -315,9 +315,18 @@ await real('shell 真跑（显式 SHELL=cmd.exe）', async () => {
     });
 });
 
+// ★ pwsh 是**可选**运行时：Windows Server / 精简镜像 / CI runner 上常常只有
+//   Windows PowerShell 5.1，没有 pwsh.exe。原判据是「本机应当有 pwsh.exe」
+//   —— 那是在开发机上写死的假设，别人机器（含 GitHub Actions 的 windows-latest
+//   某些镜像）上必然红，而代码本身没问题。
+//   正确的判据是：**有 pwsh 就真跑一遍验证走的是 pwsh；没有就跳过这一项**。
 await real('shell 真跑（显式 SHELL=pwsh.exe）', async () => {
     const pwsh = findOnPath('pwsh.exe');
-    assert.ok(pwsh, '本机应当有 pwsh.exe');
+    if (!pwsh) {
+        results.push({ name: 'shell 真跑（显式 SHELL=pwsh.exe）', ok: 'skip' });
+        console.log('  - shell 真跑（显式 SHELL=pwsh.exe）（SKIP：本机没有 pwsh.exe）');
+        return;
+    }
     await shellRun(pwsh, 'Write-Output "OK-shell-pwsh"', (x) => {
         assert.match(x.stdout, /OK-shell-pwsh/);
         assert.match(x.command?.[0] ?? '', /pwsh/i, 'argv 应当走 pwsh');
@@ -546,7 +555,7 @@ const failed = results.filter((r) => r.ok === false).length;
 const skipped = results.filter((r) => r.ok === 'skip').length;
 
 section('汇总');
-console.log(`  通过 ${passed} ／ 失败 ${failed}${skipped ? ` ／ 跳过 ${skipped}（宿主不给匿名管道）` : ''}`);
+console.log(`  通过 ${passed} ／ 失败 ${failed}${skipped ? ` ／ 跳过 ${skipped}（宿主不给匿名管道，或该运行时本机没有）` : ''}`);
 
 if (failed > 0) {
     console.log('\n失败项：');
