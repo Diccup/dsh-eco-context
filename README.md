@@ -44,12 +44,13 @@ list     列出这张 op 表（自描述）
 dsh-eco-context/                        ← 发布包
 ├── platform/     ← 平台匹配层：把这套软件适配到 DSH/Cordis
 ├── engine/       ← 平台无关引擎：17 块积木 + 3 个 libs
-├── ours/         ← 自有增强模块（输出收敛/会话记忆/压缩归档/CJK/抓取）
+├── ours/         ← 自有增强模块（输出收敛/会话记忆/压缩归档/CJK）
 ├── skills/       ← 捆绑技能文档
-├── deps/  fp/    ← 网页抓取用的 Python 依赖与实现
 └── vendor/context-mode/LICENSE  ← 第三方许可声明（仅 LICENSE 文本，不含代码）
 ```
-（modes/ 已随模式系统退役删除——原版转接整条不做了，将来要就另写独立桥。）
+
+网页抓取不在本包内 —— 那是独立的 `dsh-fp-search` 插件的活。
+本包不依赖它、不 import 它。
 
 ### platform/ 是干什么的
 
@@ -105,28 +106,51 @@ dsh-eco-context/                        ← 发布包
 
 | 项 | 指标 | 实测 |
 |---|---|---|
-| 写放大 | ≤3.0× | **2.78×** |
+| 写放大（重建库口径） | ≤3.0× | **2.78×** |
 | 单条查询 P95 | ≤15 ms | 达标 |
 | 续命写频次 | 每日 ≤1 次 | 降 94% |
 | 中文 >8 字查询命中 | 100% | 达标（旧版 0%）|
 | 工具 schema 体积 | ≤1.2 KB | 达标（旧版 27,916 B）|
 
-写放大控制在 2.78× 的关键：`script_ngrams` **只写进 `chunks`**，不进 `chunks_trigram`
-（库定稿 §1.2「表数量不变，只加一列」）。
+写放大 2.78× 是**重建库口径**（一次灌满 1 MB 再量库大小），
+**不等于持续写入时的真实开销** —— 真实增量写入路径的写放大在 **10× 量级**
+（同样这句 P-02 自己也标注过："这是重建库口径，真实写入路径见 P-07"）。
+
+重建口径下之所以能压到 2.78×，关键在 `script_ngrams` **只写进 `chunks`**、不进
+`chunks_trigram`（表数量不变，只加一列）；但每条新内容进库仍要写
+`chunks` + `chunks_trigram` + `sources` 三处，**增量写放大天然远高于重建口径**。
+
+> 想要真实增量口径的数字，请看库定稿 P-07，不要拿这里这行重建口径的数字去做容量规划。
 
 ---
 
 ## 安装
 
-包内自带安装脚本（在模块拆仓 `scripts/`）：
+三条路，任选：
 
-```
-一键重装-先退出DSH再双击.bat              只换插件本体，不动数据根
-一键重装并指向新库-先退出DSH再双击.bat    插件 + 数据根一起指向新的空库
-```
+1. **DSH 插件市场**：按包名 `dsh-eco-context` 装 —— 最省事，装完直接能用。
+2. **手改**（三条都要做，缺一不加载）：
+   ```text
+   ① 把整个包拷到  %USERPROFILE%\.dsh\plugins\dsh-eco-context\
+   ② 在 profile 的 package.json 里加一行：
+        "dsh-eco-context": "file:../../plugins/dsh-eco-context"
+   ③ 在 profile 的 package.json 的 dsh.profile.bundles 数组末尾加 "dsh-eco-context"
+   然后在 profile 目录跑一次 pnpm install，让它建好 node_modules 链接
+   ```
+   > DSH **不扫** `plugins\` 目录 —— 光把文件夹放进去、不注册，永远不会加载。
+   > ②③ 两条缺一都不加载（只加 dependencies 不加 bundles = 包能解析但没人 apply；
+   > 只加 bundles 不加 dependencies = patch 读得到、包解析不到）。
+   > profile 目录看 `~\.dsh\profiles\` 下有哪些文件夹，通常就一个。
+3. **按包名装**：在 profile 目录跑 `pnpm add file:../../plugins/dsh-eco-context`，再补 ③ 那行 bundles。
 
-两者都要求**先完全退出 DSH**（主窗口 + 托盘），否则文件占用会失败。
-第二个脚本带安全闸：指到现有库或它的子目录会直接 REFUSED。
+装完新建会话，模型调一次 `ctx({op:"list"})` 出 op 表就成了。
+需要完全退出 DSH 重开才生效的场合：改了 `cordis.patch.yml` 或 profile 注册内容。
+
+### 数据根在哪
+
+默认落在插件目录下的 `engine\.content\`（跟着安装位置走）。
+想指到别处：在 profile 的 `cordis.patch.yml` 里加覆盖块写 `contentDir`，
+或设环境变量 `CONTEXT_MODE_DIR`。
 
 ---
 

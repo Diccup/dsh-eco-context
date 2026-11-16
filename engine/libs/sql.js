@@ -27,8 +27,9 @@
  *   · `chunks_trigram` = title, content, 6×UNINDEXED                     ← **不加列**
  *
  * 实现方第一版把 script_ngrams 也写进 trigram 表，导致同一份 gram 文本存两遍：
- *   P-02 口径实测 3.19× → 3.63×（多耗 0.44×），**写放大因此超标**（T-7 抓到的）。
+ *   重建库口径实测 3.19× → 3.63×（多耗 0.44×），**写放大因此超标**（T-7 抓到的）。
  *   库文档写完就说"表数量不变，只加一列"，这里必须照办。
+ *   ★ 3.19× / 3.63× 都是**重建库口径**的数字；真实增量写入路径的写放大在 10× 量级。
  */
 export const CHUNK_COLUMNS = Object.freeze({
     porter: ['title', 'content', 'script_ngrams', 'source_id', 'content_type', 'source_category', 'session_id', 'event_id', 'timestamp', 'accessed_ts'],

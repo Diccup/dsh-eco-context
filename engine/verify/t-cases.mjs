@@ -200,12 +200,16 @@ await T('T-6', 'content="" + path 回退读文件 / TOCTOU（#350/#442）', asyn
     return { pass: r.totalChunks === 1 && notRegular === 'NOT_REGULAR_FILE', detail: `空串回退=${r.totalChunks} 块；目录被拒=${notRegular}` };
 });
 
-await T('T-7', '写放大 ≤3.0×（P-02 口径：1MB 中文语料 / 单源多块）', async () => {
+await T('T-7', '写放大 ≤3.0×（重建库口径：1MB 中文语料 / 单源多块）', async () => {
     // ★ 口径必须与 P-02（参数实测记录 L31）一致，否则比的不是同一个东西：
     //   语料 = 同一句中文段落反复灌满 1 MB；切成 ~257 块**写进同一个 source**；
     //   判据 = db 文件字节 / 原始内容字节（P-02 定稿 2.82×，门槛 3.0×）。
     //   （实现方第一版用「100 个独立 source」测，得到 4.22× —— 那是 FTS5 段数差异
     //     带来的虚高，不是结构性写放大；P-02 自己标注过"重建库口径，真实路径见 P-07"。）
+    //
+    // ★★ 这道门只守**重建库口径**。真实**增量写入**路径的写放大在 10× 量级
+    //    （每条新内容要写 chunks + chunks_trigram + sources 三处）——
+    //    P-02 定稿时自己就标注过这一点。**别拿这个数字做容量规划。**
     const SENT = '这是一个用于测试写放大的中文段落，包含汉字和标点符号。';
 
     // ① 主库：单源 + 同一语料
@@ -233,7 +237,7 @@ await T('T-7', '写放大 ≤3.0×（P-02 口径：1MB 中文语料 / 单源多�
 
     return {
         pass: ratio <= 3.0,
-        detail: `入 ${inBytes} B → 库 ${sizeNow} B，写放大 ${ratio.toFixed(2)}×（${chunkCount} 块 / 单源，P-02 口径，阈值 3.0×）`,
+        detail: `入 ${inBytes} B → 库 ${sizeNow} B，重建库口径写放大 ${ratio.toFixed(2)}×（${chunkCount} 块 / 单源，P-02 口径，阈值 3.0×；真实增量口径约 10× 量级）`,
     };
 });
 
